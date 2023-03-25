@@ -1,0 +1,37 @@
+version: '3'
+
+services:
+  backend:
+    build:
+      
+      context: .
+      dockerfile: ./Dockerfile.backend
+
+    volumes:
+      - ../packages/backend:/workspaces/backend:cached
+
+    # Overrides default command so things don't shut down after the process ends.
+    command: sleep infinity
+
+    # Runs app on the same network as the database container, allows "forwardPorts" in devcontainer.json function.
+    # network_mode: service:db
+
+    # Use "forwardPorts" in **devcontainer.json** to forward an app port locally.
+    # (Adding the "ports" property to this file will not forward from a Codespace.)
+
+  frontend:
+    build: 
+      context: .
+      dockerfile: ./Dockerfile.frontend
+
+    volumes:
+      - ../packages/frontend:/workspaces/frontend:cached
+      
+    # Overrides default command so things don't shut down after the process ends.
+    command: sleep infinity
+
+    # Runs app on the same network as the database container, allows "forwardPorts" in devcontainer.json function.
+    network_mode: service:backend
+
+    # Use "forwardPorts" in **devcontainer.json** to forward an app port locally. 
+    # (Adding the "ports" property to this file will not forward from a Codespace.)
