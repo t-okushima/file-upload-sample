@@ -1,95 +1,98 @@
-import Image from 'next/image'
-import { Inter } from 'next/font/google'
-import styles from './page.module.css'
+'use client';
+import Image from 'next/image';
+import styles from './page.module.css';
+import { useForm } from 'react-hook-form';
+import React, { useEffect, useState } from 'react';
 
-const inter = Inter({
-  display: "swap",
-  subsets: ['latin'],
-  variable: '--font-inter',
-})
+interface IFormValues {
+  title: string;
+  images: {
+    order: number;
+    file: File;
+  }[];
+}
+
+interface IImage {
+  id: number;
+  order: number;
+  url: string;
+}
+interface IImageInfo {
+  id: number;
+  title: string;
+  images: IImage[];
+}
+
+async function fetchData(
+  setData: React.Dispatch<React.SetStateAction<IImageInfo[]>>,
+) {
+  const response = await fetch('http://localhost:3001/api/image_infos', {
+    method: 'GET',
+  });
+  const data = await response.json();
+  setData(data);
+}
 
 export default function Home() {
+  const [imageInfos, setImageInfos] = useState<IImageInfo[]>([]);
+  useEffect(() => {
+    fetchData(setImageInfos);
+  }, []);
+
+  const { register, handleSubmit, setValue } = useForm<IFormValues>({
+    defaultValues: {
+      title: '',
+      images: [],
+    },
+  });
+  const onChangeFiles = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!event.target?.files) return;
+
+    Array.from(event.target.files).forEach((file, index) => {
+      setValue(`images.${index}.file`, file);
+      setValue(`images.${index}.order`, index);
+    });
+  };
+  const onClickSubmit = async (data: IFormValues) => {
+    const formData = new FormData();
+    formData.append('imageInfo[title]', data.title);
+    data.images.forEach((image, index) => {
+      formData.append(
+        `imageInfo[images_attributes][][order]`,
+        `${image.order}`,
+      );
+      formData.append(`imageInfo[images_attributes][][file]`, image.file);
+    });
+
+    await fetch('http://localhost:3001/api/image_infos', {
+      method: 'POST',
+      body: formData,
+    });
+
+    fetchData(setImageInfos);
+  };
+  const list = imageInfos.map((info) => (
+    <div key={info.id}>
+      <div>{info.title}</div>
+      {info.images.map((image) => (
+        <div key={image.id}>{image.url}</div>
+      ))}
+    </div>
+  ));
   return (
     <main className={styles.main}>
-      <div className={styles.description}>
-        <p>
-          Get started by editing&nbsp;
-          <code className={styles.code}>src/app/page.tsx</code>
-        </p>
-        <div>
-          <a
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{' '}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className={styles.vercelLogo}
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
-        </div>
-      </div>
+      <div>{list}</div>
 
-      <div className={styles.center}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
+      <div>
+        <input
+          placeholder='イメージ情報のタイトル'
+          {...register('title', { required: true })}
         />
-        <div className={styles.thirteen}>
-          <Image src="/thirteen.svg" alt="13" width={40} height={31} priority />
-        </div>
-      </div>
-
-      <div className={styles.grid}>
-        <a
-          href="https://beta.nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={inter.className}>
-            Docs <span>-&gt;</span>
-          </h2>
-          <p className={inter.className}>
-            Find in-depth information about Next.js features and API.
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={inter.className}>
-            Templates <span>-&gt;</span>
-          </h2>
-          <p className={inter.className}>Explore the Next.js 13 playground.</p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={inter.className}>
-            Deploy <span>-&gt;</span>
-          </h2>
-          <p className={inter.className}>
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
+        <input type='file' multiple accept='image/*' onChange={onChangeFiles} />
+        <button type='button' onClick={handleSubmit(onClickSubmit)}>
+          保存
+        </button>
       </div>
     </main>
-  )
+  );
 }
